@@ -1,0 +1,21 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: facesketchapp
+  labels:
+    app: facesketchapp
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: facesketchapp
+  template:
+    metadata:
+      labels:
+        app: facesketchapp
+    spec:
+      containers:
+        - name: facesketchapp
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          ports:
+            - containerPort: 80

@@ -1,0 +1,79 @@
+trigger:
+- main
+
+resources:
+- repo: self
+
+variables:
+  dockerRegistryServiceConnection: '6fec79d6-81dc-45e8-84e5-915ab9abdfeb'
+  imageRepository: 'facesketchapp'
+  containerRegistry: 'democontainer01.azurecr.io'
+  dockerfilePath: '**/Dockerfile'
+  tag: '$(Build.BuildId)'
+  vmImageName: 'ubuntu-latest'
+
+  # Helm variables
+  helmChartPath: 'myapp'                  # relative path to your chart
+  releaseName: 'facesketchapp'            # Helm release name
+  namespace: 'helmfacesketch'             # Target K8s namespace
+
+stages:
+- stage: Build
+  displayName: Build stage
+  jobs:
+  - job: Build
+    displayName: Build and Push Docker Image
+    pool:
+      vmImage: $(vmImageName)
+    steps:
+    - task: Docker@2
+      displayName: Build image
+      inputs:
+        command: build
+        repository: $(imageRepository)
+        dockerfile: $(dockerfilePath)
+        containerRegistry: $(dockerRegistryServiceConnection)
+        tags: |
+          $(tag)
+
+    - task: Docker@2
+      displayName: Push image
+      inputs:
+        command: push
+        repository: $(imageRepository)
+        dockerfile: $(dockerfilePath)
+        containerRegistry: $(dockerRegistryServiceConnection)
+        tags: |
+          $(tag)
+
+- stage: Deploy
+  displayName: Deploy stage
+  dependsOn: Build
+  jobs:
+  - deployment: DeployToAKS
+    displayName: Helm Deploy to AKS
+    environment: 'Facesketchapp-4676.facesketch'
+    pool:
+      vmImage: $(vmImageName)
+    strategy:
+      runOnce:
+        deploy:
+          steps:
+          - task: AzureCLI@2
+            displayName: Helm Install/Upgrade
+            inputs:
+              azureSubscription: '6fec79d6-81dc-45e8-84e5-915ab9abdfeb'
+              scriptType: bash
+              scriptLocation: inlineScript
+              inlineScript: |
+                echo "Getting AKS credentials..."
+                az aks get-credentials \
+                  --resource-group <your-resource-group> \
+                  --name <your-aks-cluster> \
+                  --overwrite-existing
+
+                echo "Deploying using Helm..."
+                helm upgrade --install $(releaseName) $(helmChartPath) \
+                  --set image.repository=$(containerRegistry)/$(imageRepository) \
+                  --set image.tag=$(tag) \
+                  --namespace $(namespace) --create-namespace
