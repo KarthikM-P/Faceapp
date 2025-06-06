@@ -5,18 +5,14 @@ resources:
 - repo: self
 
 variables:
-  dockerRegistryServiceConnection: '6fec79d6-81dc-45e8-84e5-915ab9abdfeb'   # Docker Registry service connection
-  azureSubscriptionServiceConnection: 'AzureAKSConnection'                # AzureRM service connection for AKS (replace this)
+  dockerRegistryServiceConnection: '6fec79d6-81dc-45e8-84e5-915ab9abdfeb'
   imageRepository: 'facesketchapp'
   containerRegistry: 'democontainer01.azurecr.io'
   dockerfilePath: '**/Dockerfile'
   tag: '$(Build.BuildId)'
   vmImageName: 'ubuntu-latest'
-
-  # Helm variables
-  helmChartPath: './myapp'                  # relative path to your chart
-  releaseName: 'facesketchapp'            # Helm release name
-  namespace: 'helmfacesketch'             # Target K8s namespace
+  helmNamespace: 'helmfacesketch'
+  helmReleaseName: 'facesketchapp'
 
 stages:
 - stage: Build
@@ -47,6 +43,12 @@ stages:
         tags: |
           $(tag)
 
+    # ✅ Publish Helm chart as artifact
+    - task: PublishPipelineArtifact@1
+      inputs:
+        targetPath: '$(System.DefaultWorkingDirectory)/myapp'
+        artifact: helmchart
+
 - stage: Deploy
   displayName: Deploy stage
   dependsOn: Build
@@ -60,10 +62,16 @@ stages:
       runOnce:
         deploy:
           steps:
+          # ✅ Download published Helm chart
+          - task: DownloadPipelineArtifact@2
+            inputs:
+              artifact: helmchart
+              path: $(Pipeline.Workspace)/helmchart
+
           - task: AzureCLI@2
             displayName: Helm Install/Upgrade
             inputs:
-              azureSubscription: '$(azureSubscriptionServiceConnection)'    # <-- AzureRM connection here
+              azureSubscription: 'AzureAKSConnection'
               scriptType: bash
               scriptLocation: inlineScript
               inlineScript: |
@@ -74,7 +82,7 @@ stages:
                   --overwrite-existing
 
                 echo "Deploying using Helm..."
-                helm upgrade --install $(releaseName) $(helmChartPath) \
+                helm upgrade --install $(helmReleaseName) $(Pipeline.Workspace)/helmchart \
                   --set image.repository=$(containerRegistry)/$(imageRepository) \
                   --set image.tag=$(tag) \
-                  --namespace $(namespace) --create-namespace
+                  --namespace $(helmNamespace) --create-namespace
