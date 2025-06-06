@@ -5,7 +5,8 @@ resources:
 - repo: self
 
 variables:
-  dockerRegistryServiceConnection: '6fec79d6-81dc-45e8-84e5-915ab9abdfeb'
+  dockerRegistryServiceConnection: '6fec79d6-81dc-45e8-84e5-915ab9abdfeb'   # Docker Registry service connection
+  azureSubscriptionServiceConnection: 'AzureAKSConnection'                # AzureRM service connection for AKS (replace this)
   imageRepository: 'facesketchapp'
   containerRegistry: 'democontainer01.azurecr.io'
   dockerfilePath: '**/Dockerfile'
@@ -62,14 +63,14 @@ stages:
           - task: AzureCLI@2
             displayName: Helm Install/Upgrade
             inputs:
-              azureSubscription: '6fec79d6-81dc-45e8-84e5-915ab9abdfeb'
+              azureSubscription: '$(azureSubscriptionServiceConnection)'    # <-- AzureRM connection here
               scriptType: bash
               scriptLocation: inlineScript
               inlineScript: |
                 echo "Getting AKS credentials..."
                 az aks get-credentials \
-                  --resource-group <your-resource-group> \
-                  --name <your-aks-cluster> \
+                  --resource-group Ivoyant_group \
+                  --name Allpurposes \
                   --overwrite-existing
 
                 echo "Deploying using Helm..."
