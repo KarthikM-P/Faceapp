@@ -14,7 +14,7 @@ variables:
   vmImageName: 'ubuntu-latest'
 
   # Helm variables
-  helmChartPath: 'myapp'                  # relative path to your chart
+  helmChartPath: './myapp'                  # relative path to your chart
   releaseName: 'facesketchapp'            # Helm release name
   namespace: 'helmfacesketch'             # Target K8s namespace
 
