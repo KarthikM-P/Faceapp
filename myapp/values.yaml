@@ -1,6 +1,12 @@
 image:
-  repository: Democontainer01.azurecr.io/facesketchapp
+  repository: democontainer01.azurecr.io/facesketchapp
   tag: latest
+  pullPolicy: IfNotPresent
+
 service:
-  type: ClusterIP
+  type: LoadBalancer
   port: 80
+
+serviceAccount:
+  create: true
+  name: ""
